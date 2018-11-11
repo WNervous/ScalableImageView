@@ -18,6 +18,6 @@ public class Utils {
         options.inJustDecodeBounds = false;
         options.inDensity = options.outWidth;
         options.inTargetDensity = width;
-        return BitmapFactory.decodeResource(res, R.drawable.photo, options);
+        return BitmapFactory.decodeResource(res, R.drawable.avatar_rengwuxian, options);
     }
 }

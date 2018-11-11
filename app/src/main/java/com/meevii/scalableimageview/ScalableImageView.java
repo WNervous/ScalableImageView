@@ -73,7 +73,7 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        canvas.translate(mCanvasOffSetX, mCanvasOffSetY);
+        canvas.translate(mCanvasOffSetX * mScaleFraction, mCanvasOffSetY * mScaleFraction);
         float imageScale = mSmallImageScale + mScaleFraction * (mBigImageScale - mSmallImageScale);
         canvas.scale(imageScale, imageScale, getWidth() / 2f, getHeight() / 2f);
         canvas.drawBitmap(mBitmap, mBitmapOffsetX, mBitmapOffsetY, paint);
@@ -138,11 +138,8 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     public boolean onScroll(MotionEvent down, MotionEvent motionEvent1, float distanceX, float distanceY) {
         if (mIsBig) {
             mCanvasOffSetX -= distanceX;
-            mCanvasOffSetX = Math.min(mCanvasOffSetX, (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2);
-            mCanvasOffSetX = Math.max(mCanvasOffSetX, -(mBitmap.getWidth() * mBigImageScale - getWidth()) / 2);
             mCanvasOffSetY -= distanceY;
-            mCanvasOffSetY = Math.min(mCanvasOffSetY, (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
-            mCanvasOffSetY = Math.max(mCanvasOffSetY, -(mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
+            fixedOffset();
             invalidate();
         }
         return false;
@@ -159,11 +156,7 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     @Override
     public boolean onFling(MotionEvent motionEvent, MotionEvent motionEvent1, float v, float v1) {
         if (mIsBig) {
-            overScroller.fling((int) mCanvasOffSetX, (int) mCanvasOffSetY, (int) v, (int) v1,
-                    -(int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2,
-                    (int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2,
-                    -(int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2,
-                    (int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2,100,100);
+            overScroller.fling((int) mCanvasOffSetX, (int) mCanvasOffSetY, (int) v, (int) v1, -(int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, (int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, -(int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2, (int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
 
             postOnAnimation(this);
         }
@@ -186,10 +179,11 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     public boolean onDoubleTap(MotionEvent motionEvent) {
         mIsBig = !mIsBig;
         if (mIsBig) {
+            mCanvasOffSetX = motionEvent.getX() - getWidth() / 2 - (motionEvent.getX() - getWidth() / 2) * mBigImageScale / mSmallImageScale;
+            mCanvasOffSetY = motionEvent.getY() - getHeight() / 2 - (motionEvent.getY() - getHeight() / 2) * mBigImageScale / mSmallImageScale;
+            fixedOffset();
             getScaleAnimator().start();
         } else {
-            mCanvasOffSetX = 0;
-            mCanvasOffSetY = 0;
             getScaleAnimator().reverse();
         }
         return false;
@@ -209,5 +203,12 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
             invalidate();
             postOnAnimation(this);
         }
+    }
+
+    private void fixedOffset() {
+        mCanvasOffSetX = Math.min(mCanvasOffSetX, (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2);
+        mCanvasOffSetX = Math.max(mCanvasOffSetX, -(mBitmap.getWidth() * mBigImageScale - getWidth()) / 2);
+        mCanvasOffSetY = Math.min(mCanvasOffSetY, (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
+        mCanvasOffSetY = Math.max(mCanvasOffSetY, -(mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
     }
 }
