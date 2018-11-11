@@ -24,7 +24,7 @@ import android.widget.OverScroller;
  * 6. fling 效果
  */
 
-public class ScalableImageView extends View implements GestureDetector.OnGestureListener, GestureDetector.OnDoubleTapListener, Runnable {
+public class ScalableImageView extends View implements Runnable {
 
     private static final float IMAGE_SIZE = Utils.dpToPixel(300);
     private static final float OVER_SCALE = 1.5f;
@@ -44,13 +44,13 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     public  float          mScaleFraction;
     private ObjectAnimator mScaleAnimator;
 
-    private GestureDetectorCompat mGestureDetectorCompat;
-    private OverScroller          overScroller;
+    private GestureDetectorCompat      mGestureDetectorCompat;
+    private OverScroller               overScroller;
 
     public ScalableImageView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         mBitmap = Utils.getAvatar(getResources(), (int) IMAGE_SIZE);
-        mGestureDetectorCompat = new GestureDetectorCompat(context, this);
+        mGestureDetectorCompat = new GestureDetectorCompat(context, new ScaleGestureListener());
         overScroller = new OverScroller(context);
     }
 
@@ -83,6 +83,94 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
     public boolean onTouchEvent(MotionEvent event) {
         return mGestureDetectorCompat.onTouchEvent(event);
     }
+
+    private class ScaleGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        /**
+         * 除了onDown 的返回值对开发有用处外，其他方法的返回值没有用，不予处理
+         */
+
+        @Override
+        public boolean onDown(MotionEvent motionEvent) {
+            // ACTION_DOWN
+            return true;
+        }
+
+        @Override
+        public void onShowPress(MotionEvent motionEvent) {
+            //
+        }
+
+        /**
+         * // 单击  如果长安没有关闭的情况下  按下时间小于500ms 回调
+         */
+        @Override
+        public boolean onSingleTapUp(MotionEvent motionEvent) {
+            return false;
+        }
+
+        @Override
+        public boolean onScroll(MotionEvent down, MotionEvent motionEvent1, float distanceX, float distanceY) {
+            if (mIsBig) {
+                mCanvasOffSetX -= distanceX;
+                mCanvasOffSetY -= distanceY;
+                fixedOffset();
+                invalidate();
+            }
+            return false;
+        }
+
+
+        // 按下时间大于500ms
+        @Override
+        public void onLongPress(MotionEvent motionEvent) {
+
+        }
+
+        // 手指拨动的动作，   惯性华滑动
+        @Override
+        public boolean onFling(MotionEvent motionEvent, MotionEvent motionEvent1, float v, float v1) {
+            if (mIsBig) {
+                overScroller.fling((int) mCanvasOffSetX, (int) mCanvasOffSetY, (int) v, (int) v1, -(int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, (int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, -(int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2, (int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
+
+                postOnAnimation(ScalableImageView.this);
+            }
+            return false;
+        }
+
+
+        ///////////////////////////////////////////////////////////////////////////////////
+        // 重写onDoubleTapListener
+        ///////////////////////////////////////////////////////////////////////////////////
+
+        //  单击确认
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
+            return false;
+        }
+
+        // 间隔大于40ms  小于300ms
+        @Override
+        public boolean onDoubleTap(MotionEvent motionEvent) {
+            mIsBig = !mIsBig;
+            if (mIsBig) {
+                mCanvasOffSetX = motionEvent.getX() - getWidth() / 2 - (motionEvent.getX() - getWidth() / 2) * mBigImageScale / mSmallImageScale;
+                mCanvasOffSetY = motionEvent.getY() - getHeight() / 2 - (motionEvent.getY() - getHeight() / 2) * mBigImageScale / mSmallImageScale;
+                fixedOffset();
+                getScaleAnimator().start();
+            } else {
+                getScaleAnimator().reverse();
+            }
+            return false;
+        }
+
+        // 当触发双击事件时，会一直触发，直到抬起
+        @Override
+        public boolean onDoubleTapEvent(MotionEvent motionEvent) {
+            return false;
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////
     // getter and setter
     ///////////////////////////////////////////////////////////////////////////////////
@@ -104,96 +192,6 @@ public class ScalableImageView extends View implements GestureDetector.OnGesture
         return mScaleAnimator;
     }
 
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    // 重写
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * 除了onDown 的返回值对开发有用处外，其他方法的返回值没有用，不予处理
-     */
-
-
-    @Override
-    public boolean onDown(MotionEvent motionEvent) {
-        // ACTION_DOWN
-        return true;
-    }
-
-    @Override
-    public void onShowPress(MotionEvent motionEvent) {
-        //
-    }
-
-    /**
-     * // 单击  如果长安没有关闭的情况下  按下时间小于500ms 回调
-     */
-    @Override
-    public boolean onSingleTapUp(MotionEvent motionEvent) {
-
-        return false;
-    }
-
-    @Override
-    public boolean onScroll(MotionEvent down, MotionEvent motionEvent1, float distanceX, float distanceY) {
-        if (mIsBig) {
-            mCanvasOffSetX -= distanceX;
-            mCanvasOffSetY -= distanceY;
-            fixedOffset();
-            invalidate();
-        }
-        return false;
-    }
-
-
-    // 按下时间大于500ms
-    @Override
-    public void onLongPress(MotionEvent motionEvent) {
-
-    }
-
-    // 手指拨动的动作，   惯性华滑动
-    @Override
-    public boolean onFling(MotionEvent motionEvent, MotionEvent motionEvent1, float v, float v1) {
-        if (mIsBig) {
-            overScroller.fling((int) mCanvasOffSetX, (int) mCanvasOffSetY, (int) v, (int) v1, -(int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, (int) (mBitmap.getWidth() * mBigImageScale - getWidth()) / 2, -(int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2, (int) (mBitmap.getHeight() * mBigImageScale - getHeight()) / 2);
-
-            postOnAnimation(this);
-        }
-        return false;
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    // 重写onDoubleTapListener
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    //  单击确认
-    @Override
-    public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
-        return false;
-    }
-
-    // 间隔大于40ms  小于300ms
-    @Override
-    public boolean onDoubleTap(MotionEvent motionEvent) {
-        mIsBig = !mIsBig;
-        if (mIsBig) {
-            mCanvasOffSetX = motionEvent.getX() - getWidth() / 2 - (motionEvent.getX() - getWidth() / 2) * mBigImageScale / mSmallImageScale;
-            mCanvasOffSetY = motionEvent.getY() - getHeight() / 2 - (motionEvent.getY() - getHeight() / 2) * mBigImageScale / mSmallImageScale;
-            fixedOffset();
-            getScaleAnimator().start();
-        } else {
-            getScaleAnimator().reverse();
-        }
-        return false;
-    }
-
-    // 当触发双击事件时，会一直触发，直到抬起
-    @Override
-    public boolean onDoubleTapEvent(MotionEvent motionEvent) {
-        return false;
-    }
 
     @Override
     public void run() {
